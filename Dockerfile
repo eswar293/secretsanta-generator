@@ -1,4 +1,4 @@
-FROM openjdk:8u151-jdk-alpine3.7
+FROM clipse-temurin:8-jdk-alpine
 
 EXPOSE 8080
 
