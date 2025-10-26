@@ -25,13 +25,6 @@ pipeline {
                 sh 'mvn test'
             }
         }
-        stage('Sonarqube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=santa -Dsonar.projectKey=santa -Dsonar.java.binaries=. '''
-                }
-            }
-        }
         stage('owasp scan') {
             steps {
                 dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DC'
