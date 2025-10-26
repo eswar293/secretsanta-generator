@@ -29,7 +29,7 @@ pipeline {
 
         stage('Sonar Scan for Quality checks') {
             steps {
-                withSonarQubeEnv('sonar-token') {
+                withSonarQubeEnv('sonarqube') {
                     sh ''' $SCANNER_HOME/bin/sonarqube -Dsonar.projectName=santa -Dsonar.projectKey=santa -Dsonar.java.binaries=. '''
                 }
             }
