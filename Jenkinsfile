@@ -27,18 +27,18 @@ pipeline {
             }
         }
 
+        stage('OWASP Depedency Check') { 
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ ', odcInstallation: 'DC'
+                dependencyCheckPublisher pattern: '**/depedency-check-report.xml'
+            }
+        }
+
         stage('Sonar Scan for Quality checks') {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh ''' $SCANNER_HOME/bin/sonarqube -Dsonar.projectName=santa -Dsonar.projectKey=santa -Dsonar.java.binaries=. '''
                 }
-            }
-        }
-
-        stage('OWASP Depedency Check') { 
-            steps {
-                dependencyCheck additionalArguments: '--scan ./ ', odcInstallation: 'DC'
-                dependencyCheckPublisher pattern: '**/depedency-check-report.xml'
             }
         }
 
