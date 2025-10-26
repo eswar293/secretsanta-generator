@@ -1,37 +1,48 @@
 pipeline {
     agent any
     tools {
-        jdk 'jdk-17'
-        maven 'maven'
+        jdk 'jdk-21'
+        maven 'mvn-3.9'
     }
 
     environment {
-        SCANNER_HOME= tool 'sonar-scanner'
+        SCANNER_HOME = tool 'sonarqube'
     }
-
     stages {
-        stage('Git Checkout') {
+        stage('Code Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/eswar293/secretsanta-generator.git'
+                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/eswar293/secretsanta-generator.git'
             }
         }
-        stage('Compile') {
+        
+        stage('Code Compile') {
             steps {
                 sh 'mvn compile'
             }
         }
-        stage('Test') {
+
+        stage('Code Test') {
             steps {
                 sh 'mvn test'
             }
         }
-        stage('owasp scan') {
+
+        stage('Sonar Scan for Quality checks') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DC'
-                                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                withSonarQubeEnv('sonar-token') {
+                    sh ''' $SCANNER_HOME/bin/sonarqube -Dsonar.projectName=santa -Dsonar.projectKey=santa -Dsonar.java.binaries=. '''
+                }
             }
         }
-        stage('Buil Application') {
+
+        stage('OWASP Depedency Check') { 
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ ', odcInstallation: 'DC'
+                dependencyCheckPublisher pattern: '**/depedency-check-report.xml'
+            }
+        }
+
+        stage('Build Application') {
             steps {
                 sh 'mvn clean package'
             }
