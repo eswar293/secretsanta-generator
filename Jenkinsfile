@@ -27,12 +27,6 @@ pipeline {
             }
         }
 
-        stage('OWASP Depedency Check') { 
-            steps {
-                dependencyCheck additionalArguments: '--scan ./ ', odcInstallation: 'DC'
-                dependencyCheckPublisher pattern: '**/depedency-check-report.xml'
-            }
-        }
 
         stage('Sonar Scan for Quality checks') {
             steps {
@@ -45,6 +39,32 @@ pipeline {
         stage('Build Application') {
             steps {
                 sh 'mvn clean package'
+            }
+        }
+
+        stage ('Docker Build') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                    sh "docker build -t  eswar1241/santa123:${BUILD_NUMBER} . "
+                    }
+                }
+            }
+        }
+
+        stage ('Docker push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                    sh "docker push eswar1241/santa123:${BUILD_NUMBER}"
+                    }
+                }
+            }
+        }
+
+        stage ('Trivy image scan') {
+            steps {
+                sh "trivy image eswar1241/santa123:${BUILD_NUMBER}"
             }
         }
     }
