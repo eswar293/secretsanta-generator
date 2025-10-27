@@ -64,7 +64,7 @@ pipeline {
 
         stage ('Trivy image scan') {
             steps {
-                sh "trivy image eswar1241/santa123:${BUILD_NUMBER}"
+                sh "trivy image eswar1241/santa:${BUILD_NUMBER}"
             }
         }
     }
