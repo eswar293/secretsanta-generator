@@ -1,4 +1,4 @@
-FROM clipse-temurin:8-jdk-alpine
+FROM elipse-temurin:8-jdk-alpine
 
 EXPOSE 8080
 
