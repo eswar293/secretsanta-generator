@@ -6,7 +6,7 @@ pipeline {
     }
 
     environment {
-        SCANNER_HOME = tool 'Sonarqube'
+        SCANNER_HOME = tool 'sonarqube'
     }
     stages {
         stage('Code Checkout') {
@@ -46,7 +46,7 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred') {
-                    sh "docker build -t  eswar1241/santa123:${BUILD_NUMBER} . "
+                    sh "docker build -t  eswar1241/santa:${BUILD_NUMBER} . "
                     }
                 }
             }
@@ -56,7 +56,7 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred') {
-                    sh "docker push eswar1241/santa123:${BUILD_NUMBER}"
+                    sh "docker push eswar1241/santa:${BUILD_NUMBER}"
                     }
                 }
             }
