@@ -61,15 +61,6 @@
         </snapshotRepository>
     </distributionManagement>
 
-	<plugin>
-    	<groupId>org.owasp</groupId>
-    	<artifactId>dependency-check-maven</artifactId>
-    	<version>12.1.8</version>
-    	<configuration>
-        	<nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
-    	</configuration>
-	</plugin>
-
 	<build>
 		<plugins>
 			<plugin>
