@@ -50,6 +50,7 @@
 		</dependency>
 	</dependencies>
 
+	
 	<distributionManagement>
         <repository>
             <id>maven-releases</id>
