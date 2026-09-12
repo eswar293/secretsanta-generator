@@ -1,141 +1,89 @@
 pipeline {
     agent any
-
     tools {
-        maven 'mvn-3.9'
-        jdk 'jdk-21'
+        jdk'jdk8'
+        maven'mvn3.9'
     }
-
     environment {
-        SCANNER_HOME = tool 'sonarqube'
-        IMAGE_NAME = "eswar1241"
-        
+        SONAR_HOME = tool'sonarqube'
+        IMAGE_NAME = "eswar1241/${env.JOB_NAME}"
+        IMAGE_TAG = "v${env.BUILD_NUMBER}"
     }
 
     stages {
-        stage('Clean the workspace') {
+        stage('Clean workspace') {
             steps {
                 cleanWs()
             }
         }
-
-        stage('Checkout Code') {
+        stage('Git checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/eswar293/secretsanta-generator.git'
+                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/eswar293/secretsanta-generator.git'
             }
         }
-
-        stage('Compiling the Code') {
+        stage('Compile the Code') {
             steps {
                 sh 'mvn clean compile'
             }
         }
-
-
         stage('Test the Code') {
             steps {
                 sh 'mvn test'
             }
         }
-
-        stage('OWASP Dependency Check') {
+        stage('Trivy Filesystem Scan') {
             steps {
-                dependencyCheck additionalArguments: ' --scan ./ ', odcInstallation: 'DC'
-                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                sh 'trivy fs --format table -o filesystem-report.html .'
             }
         }
-
-        stage('Trivy filesystem scan') {
-            steps {
-                sh "trivy fs --format table -o trivy-fs-report.html ."
-            }
-        }
-
-        stage('SonarQube Analysis') {
+        stage('Sonarqube Analysis') {
             steps {
                 withSonarQubeEnv('sonarqube') {
-                    sh '$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=santa -Dsonar.projectKey=santa -Dsonar.java.binaries=. '
+                    sh ''' $SONAR_HOME/bin/sonar-scanner -Dsonar.projectName=Santa -Dsonar.projectKey=Santa \
+                            -Dsonar.java.binaries=. '''
                 }
             }
         }
-
-        stage('Quality Gate') {
+        stage('Code Quality Gate') {
             steps {
-                script {
-                    timeout(3) {
-                        waitForQualityGate abortPipeline: false, credentialsId: 'sonar-cred'
-                    }
-                }
-                
+                waitForQualityGate abortPipeline: false, credentialsId: 'sonar-cred'
             }
         }
-
         stage('Build Application') {
             steps {
                 sh 'mvn clean package'
             }
         }
-
-        stage('Deploy to Nexus') {
+        stage('Artifact push to nexus') {
             steps {
-                withMaven(globalMavenSettingsConfig: 'global-setting', jdk: 'jdk-21', maven: 'mvn-3.9', traceability: true) {
-                    sh 'mvn deploy'
+               withMaven(globalMavenSettingsConfig: 'global-settings', jdk: 'jdk8', maven: 'mvn3.9', traceability: true) {
+                   sh 'mvn deploy'
+               }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} . "
                 }
             }
         }
-
-        stage('Docker Build') {
+        stage('Docker Image Scan') {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker-cred' , url: '') {
-                    sh "docker build -t $IMAGE_NAME/${env.JOB_NAME}:latest-v${BUILD_NUMBER} ."
-                    }
+                sh "trivy image --format table -o docker-scan-image.html ${IMAGE_NAME}:${IMAGE_TAG} "
+            }
+        }
+        stage('Push to Docker Repo') {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred', url: 'https://index.docker.io/v1/') {
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG} "
                 }
             }
         }
-
-        stage('Trivy Image scan') {
+        stage('Run Docker Container') {
             steps {
-                sh "trivy image --format table -o trivy-image-report.html $IMAGE_NAME/${env.JOB_NAME}:latest-v${env.BUILD_NUMBER}"
-            }
-        }
-
-        stage('Docker push and Run') {
-            steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker-cred' , url: '') {
-                    sh "docker push $IMAGE_NAME/${env.JOB_NAME}:latest-v${BUILD_NUMBER}"
-                    sh "docker run -d --name santa -p 80:8080 $IMAGE_NAME/${env.JOB_NAME}:latest-v${BUILD_NUMBER}"
-                    }
-                }
-            }
-        }   
-    }
-
-    post {
-        always {
-            script {
-                def jobName = env.JOB_NAME
-                def buildNumber = env.BUILD_NUMBER
-                def pipelineStatus = currentBuild.result ?: 'UNKNOWN'
-                def bannerColor = pipelineStatus.toUpperCase() == 'SUCCESS' ? 'green' : 'red'
-                
-                def body = """
-                    <html>
-                    <body>
-                    <div style="border: 4px solid ${bannerColor}; padding: 10px;">
-                    <h2>${jobName} - Build ${buildNumber}</h2>
-                    <div style="background-color: ${bannerColor}; padding: 10px;">
-                    <h3 style="color: white;">Pipeline Status: ${pipelineStatus.toUpperCase()}</h3>
-                    </div>
-                    <p>Check the <a href="${BUILD_URL}">console output</a>.</p>
-                    </div>
-                    </body>
-                    </html>
-                """
+                sh 'docker run -d -p 8081:8080 --name santa ${IMAGE_NAME}:${IMAGE_TAG}'
             }
         }
     }
 }
-    
-    
